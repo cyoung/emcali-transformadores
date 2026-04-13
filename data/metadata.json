@@ -1,0 +1,12 @@
+{
+  "snapshot_date": "2026-04-13",
+  "record_count": 16165,
+  "bbox": {
+    "min_lat": 3.21698,
+    "min_lng": -76.65406,
+    "max_lat": 3.67771,
+    "max_lng": -76.39641
+  },
+  "source": "https://www.emcali.com.co/web/servicios/autogeneracion/consultar-disponibilidad",
+  "description": "Copia estática de los datos del portal público 'Consultar Disponibilidad' de EMCALI. Sitio no oficial con fines informativos."
+}

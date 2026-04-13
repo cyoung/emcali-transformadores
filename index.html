@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="es-CO">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Disponibilidad de transformadores de EMCALI: mapa de saturación y proyectos solares</title>
+  <meta name="description" content="Mapa interactivo no oficial de los transformadores públicos de EMCALI en Cali y su área metropolitana. Consulta la saturación de potencia, los proyectos solares operativos y las solicitudes aprobadas." />
+
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+    crossorigin=""
+  />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="banner">
+    <strong>Sitio no oficial</strong>, sin vínculo con EMCALI. Los datos
+    provienen del portal público
+    <em>Consultar Disponibilidad</em> y corresponden a una copia estática.
+    <a href="#acerca-de">Más información</a>
+  </div>
+
+  <header>
+    <h1>Disponibilidad de transformadores de EMCALI</h1>
+    <p class="subtitle">
+      Mapa de saturación y proyectos solares del área metropolitana de Cali
+    </p>
+  </header>
+
+  <div id="snapshot-bar">
+    <span class="snapshot-bar-icon">📅</span>
+    <span>
+      Datos actualizados el
+      <strong class="js-snapshot-date">—</strong>
+      ·
+      <strong class="js-record-count">—</strong>
+      transformadores
+    </span>
+    <a
+      class="snapshot-bar-download"
+      href="data/emcali_transformers.csv"
+      download="emcali_transformers.csv"
+    >
+      ⬇ Descargar CSV
+    </a>
+  </div>
+
+  <main id="app">
+    <aside id="sidebar">
+      <section class="filters">
+        <h2>Filtros</h2>
+
+        <div class="filter-group">
+          <label>
+            <input type="checkbox" id="filter-only-projects" />
+            <strong>Solo transformadores con proyectos solares</strong>
+          </label>
+          <p class="filter-help">
+            De los 16.165 transformadores, solo 99 registran actividad solar.
+          </p>
+        </div>
+
+        <div class="filter-group">
+          <label for="filter-project-type">Tipo de proyecto</label>
+          <select id="filter-project-type">
+            <option value="all">Todos</option>
+            <option value="operational">Operativos (entregan energía)</option>
+            <option value="approved">Aprobados (con solicitud activa)</option>
+            <option value="none">Sin proyecto</option>
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <label for="filter-saturation">
+            Saturación máxima de potencia:
+            <span id="filter-saturation-value">Sin límite</span>
+          </label>
+          <input
+            type="range" id="filter-saturation"
+            min="0" max="200" step="5" value="200"
+          />
+          <p class="filter-help">
+            Oculta los transformadores que superan este umbral. Hay 15
+            registros por encima del 100 % (sobreasignados).
+          </p>
+        </div>
+
+        <div class="filter-group">
+          <label for="filter-min-potencia">
+            Potencia mínima (kVA):
+            <span id="filter-min-potencia-value">0</span>
+          </label>
+          <input
+            type="range" id="filter-min-potencia"
+            min="0" max="2000" step="15" value="0"
+          />
+        </div>
+
+        <div class="filter-group">
+          <label for="filter-owner">Propietario</label>
+          <select id="filter-owner" multiple size="6">
+            <option value="E">EMCALI (E)</option>
+            <option value="P">Privado (P)</option>
+            <option value="1">Otro (1)</option>
+            <option value="2">Otro (2)</option>
+            <option value="N">Otro (N)</option>
+            <option value="T">Otro (T)</option>
+          </select>
+          <p class="filter-help">Ctrl/Cmd + clic para seleccionar varios.</p>
+        </div>
+
+        <div class="filter-group">
+          <label for="filter-substation">Subestación</label>
+          <select id="filter-substation">
+            <option value="">Todas</option>
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <label for="filter-voltage">Nivel de tensión</label>
+          <select id="filter-voltage">
+            <option value="">Todos</option>
+            <option value="NIVELII">Nivel II (media tensión)</option>
+            <option value="NIVELI">Nivel I (baja tensión)</option>
+            <option value="NULL">Sin clasificar</option>
+          </select>
+        </div>
+
+        <button id="filter-reset" type="button">Limpiar filtros</button>
+      </section>
+
+      <section class="summary">
+        <h2>Resumen</h2>
+
+        <div class="stat-grid">
+          <div class="stat">
+            <div class="stat-value" id="stat-count">—</div>
+            <div class="stat-label">Transformadores visibles</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value" id="stat-rated">—</div>
+            <div class="stat-label">Capacidad nominal (kVA)</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value" id="stat-available">—</div>
+            <div class="stat-label">Disponible al 50 % (kVA)</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value" id="stat-allocated">—</div>
+            <div class="stat-label">Potencia asignada (kWp)</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value" id="stat-operational">—</div>
+            <div class="stat-label">Proyectos operativos</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value" id="stat-approved">—</div>
+            <div class="stat-label">Proyectos aprobados</div>
+          </div>
+        </div>
+
+        <h3>Distribución de saturación</h3>
+        <div id="saturation-bars" class="bar-chart"></div>
+
+        <h3>Subestaciones principales</h3>
+        <div id="substation-bars" class="bar-chart"></div>
+      </section>
+
+      <section id="acerca-de" class="about">
+        <h2>Sobre este mapa</h2>
+        <p>
+          Este sitio reproduce, de forma no oficial, el portal público
+          <a
+            href="https://www.emcali.com.co/web/servicios/autogeneracion/consultar-disponibilidad"
+            target="_blank" rel="noopener"
+          >Consultar Disponibilidad</a>
+          de EMCALI. Los datos se descargaron el
+          <strong class="js-snapshot-date">—</strong>
+          y pueden haber cambiado desde entonces.
+        </p>
+        <p>
+          La idea es facilitar el análisis de patrones de saturación de la
+          red de distribución y visualizar los proyectos solares residenciales
+          y comerciales que ya están instalados o siguen en trámite.
+          <strong>Para decisiones operativas use siempre el portal oficial de EMCALI.</strong>
+        </p>
+        <p>
+          Código fuente y metodología de extracción:
+          <a href="https://github.com/cyoung/emcali-transformadores" target="_blank" rel="noopener">repositorio en GitHub</a>.
+        </p>
+        <p>
+          <a
+            id="download-csv"
+            class="download-link"
+            href="data/emcali_transformers.csv"
+            download="emcali_transformers.csv"
+          >
+            ⬇ Descargar datos (CSV ·
+            <span class="js-record-count">—</span> registros ·
+            actualizado el <span class="js-snapshot-date">—</span>)
+          </a>
+        </p>
+      </section>
+    </aside>
+
+    <div id="map-container">
+      <div id="map"></div>
+      <div id="map-loading" class="map-overlay">
+        <div class="spinner"></div>
+        <p>Cargando transformadores…</p>
+      </div>
+
+      <div id="legend">
+        <h4>Saturación de potencia</h4>
+        <ul>
+          <li><span class="dot dot-green"></span>Sin asignación (0 %)</li>
+          <li><span class="dot dot-lightgreen"></span>Disponible (hasta 30 %)</li>
+          <li><span class="dot dot-yellow"></span>Moderada (30 % a 40 %)</li>
+          <li><span class="dot dot-orange"></span>Alta (40 % a 50 %)</li>
+          <li><span class="dot dot-red"></span>Saturada (más de 50 %)</li>
+        </ul>
+        <h4>Proyectos Solares</h4>
+        <ul>
+          <li><span class="dot dot-project-operational"></span>Operativo</li>
+          <li><span class="dot dot-project-approved"></span>Aprobado</li>
+        </ul>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <p>
+      Datos públicos de EMCALI ·
+      <a href="data/emcali_transformers.csv" download="emcali_transformers.csv">Descargar CSV</a> ·
+      Sitio no oficial con fines informativos · Hecho con
+      <a href="https://leafletjs.com/" target="_blank" rel="noopener">Leaflet</a> ·
+      <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">© OpenStreetMap contributors</a>
+    </p>
+  </footer>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+          integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+          crossorigin=""></script>
+  <script src="https://unpkg.com/papaparse@5.4.1/papaparse.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
