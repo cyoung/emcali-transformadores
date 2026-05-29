@@ -6,3 +6,9 @@ node_modules/
 __pycache__/
 *.pyc
 venv/
+
+# Data-pull intermediates — only the CSV and metadata.json are committed.
+data/emcali_transformers.json
+data/raw/
+data/raw_probe/
+data/coverage_probe.md
